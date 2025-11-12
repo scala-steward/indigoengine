@@ -1,0 +1,1 @@
+# sbt crossCleanAll scalafmtCheckAll crossTestAllNoClean crossLocalPublishNoClean

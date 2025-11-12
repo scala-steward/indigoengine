@@ -1,0 +1,264 @@
+package indigoplugin.core
+
+import os._
+import indigoplugin.templates.HtmlTemplate
+import indigoplugin.templates.SupportScriptTemplate
+import indigoplugin.datatypes.DirectoryStructure
+import indigoplugin.utils.Utils
+import indigoplugin.IndigoOptions
+import java.nio.file.LinkOption
+import java.nio.file.StandardCopyOption
+import indigoplugin.IndigoAssets
+import indigoplugin.IndigoTemplate.Custom
+import indigoplugin.IndigoTemplate.Default
+import scala.annotation.nowarn
+
+object IndigoBuild {
+
+  private val workspaceDir = Utils.findWorkspace
+
+  @nowarn("msg=interpolator")
+  def build(
+      scriptPathBase: Path,
+      options: IndigoOptions,
+      assetsDirectory: os.Path,
+      baseDirectory: Path,
+      scriptNames: List[String]
+  ): Unit =
+    options.template match {
+      case Custom(inputs, outputs) =>
+        println("Building using custom template.")
+
+        val scriptName = findScriptName(scriptNames, scriptPathBase)
+
+        if (!os.exists(inputs.templateSource)) {
+          throw new Exception(
+            s"The supplied path to the template source directory does not exist: ${inputs.templateSource.toString}"
+          )
+        } else if (!os.isDir(inputs.templateSource)) {
+          throw new Exception(
+            s"The supplied path to the template source directory is not a directory: ${inputs.templateSource.toString}"
+          )
+        } else {
+          println("Copying template files...")
+
+          // Copy the initial files over to the base directory
+          os.copy.over(inputs.templateSource, baseDirectory)
+
+          // Update any HTML files, replacing tokens with values
+          os.walk(inputs.templateSource)
+            .filter(p => p.ext == "html" || p.ext == "htm")
+            .foreach { file =>
+              val content = os
+                .read(file)
+                .replace("$title", options.metadata.title)
+                .replace("$scriptName", scriptName)
+                .replace("$backgroundColor", options.metadata.backgroundColor)
+
+              os.write.over(
+                baseDirectory / file.relativeTo(inputs.templateSource),
+                content
+              )
+            }
+        }
+
+        // copy the game files
+        val gameScriptsDest = outputs.gameScripts.resolveFrom(baseDirectory)
+
+        // If the directory doesn't exist, then create it
+        if (!os.exists(gameScriptsDest))
+          os.makeDir.all(gameScriptsDest)
+
+        // If the directory exists, then check that it is a directory
+        if (!os.isDir(gameScriptsDest)) {
+          throw new Exception(
+            s"The supplied path to the game scripts destination is not a directory: ${gameScriptsDest.toString}"
+          )
+        }
+
+        // copy built js file into scripts dir
+        IndigoBuild.copyScript(scriptPathBase, gameScriptsDest, scriptName)
+
+        // copy built js source map file into scripts dir
+        IndigoBuild.copyScript(
+          scriptPathBase,
+          gameScriptsDest,
+          scriptName + ".map"
+        )
+
+        // copy assets into folder
+        val assetsDest = outputs.assets.resolveFrom(baseDirectory)
+
+        // If the directory doesn't exist, then create it
+        if (!os.exists(assetsDest))
+          os.makeDir.all(assetsDest)
+
+        // If the directory exists, then check that it is a directory
+        if (!os.isDir(assetsDest)) {
+          throw new Exception(
+            s"The supplied path to the assets destination is not a directory: ${assetsDest.toString}"
+          )
+        }
+
+        IndigoBuild.copyAssets(options.assets, assetsDirectory, assetsDest)
+
+        println(s"Built to: ${baseDirectory.toString}")
+
+      case Default =>
+        val directoryStructure = createDirectoryStructure(baseDirectory)
+
+        val scriptName = findScriptName(scriptNames, scriptPathBase)
+
+        // copy built js file into scripts dir
+        IndigoBuild.copyScript(
+          scriptPathBase,
+          directoryStructure.artefacts,
+          scriptName
+        )
+
+        // copy built js source map file into scripts dir
+        IndigoBuild.copyScript(
+          scriptPathBase,
+          directoryStructure.artefacts,
+          scriptName + ".map"
+        )
+
+        // copy assets into folder
+        IndigoBuild.copyAssets(options.assets, assetsDirectory, directoryStructure.assets)
+
+        // Write an empty cordova.js file so the script reference is intact,
+        // even though it does nothing here.
+        os.write(directoryStructure.base / "cordova.js", "")
+
+        // Write support js script
+        val support = SupportScriptTemplate.template()
+        os.write(
+          directoryStructure.base / "scripts" / "indigo-support.js",
+          support
+        )
+
+        // Fill out html template
+        val html = HtmlTemplate.template(
+          options.metadata.title,
+          options.metadata.showCursor,
+          scriptName,
+          options.metadata.backgroundColor
+        )
+
+        // Write out file
+        val outputPath = IndigoBuild.writeHtml(directoryStructure, html)
+
+        println(outputPath.toString())
+    }
+
+  def findScriptName(names: List[String], scriptDirPath: Path): String =
+    names
+      .find(name => os.exists(scriptDirPath / name))
+      .getOrElse(
+        throw new Exception(
+          "Could not find a script file with any of the following names " +
+            names.mkString("[", ", ", "]") +
+            s" in '${scriptDirPath.toString}'"
+        )
+      )
+
+  def createDirectoryStructure(baseDirectory: Path): DirectoryStructure = {
+    println("dirPath: " + baseDirectory.toString())
+
+    DirectoryStructure(
+      Utils.ensureDirectoryAt(baseDirectory),
+      Utils.ensureDirectoryAt(baseDirectory / "assets"),
+      Utils.ensureDirectoryAt(baseDirectory / "scripts")
+    )
+  }
+
+  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
+  def copyAssets(
+      indigoAssets: IndigoAssets,
+      assetsDirectory: os.Path,
+      destAssetsFolder: Path
+  ): Unit = {
+    val from = assetsDirectory
+    val to   = destAssetsFolder
+
+    if (!os.exists(from))
+      throw new Exception(
+        "Supplied game assets path does not exist: " + assetsDirectory
+          .toString()
+      )
+    else if (!os.isDir(from))
+      throw new Exception("Supplied game assets path was not a directory")
+    else {
+      println("Copying assets...")
+    }
+
+    def copyOne(p: Path): java.nio.file.Path = {
+      val target = to / p.relativeTo(from)
+
+      os.makeDir.all(target)
+
+      java.nio.file.Files.copy(
+        p.wrapped,
+        target.wrapped,
+        LinkOption.NOFOLLOW_LINKS,
+        StandardCopyOption.REPLACE_EXISTING,
+        StandardCopyOption.COPY_ATTRIBUTES
+      )
+    }
+
+    // Sanity check src and destination aren't the same
+    require(
+      !to.startsWith(from),
+      s"Can't copy a directory into itself: $to is inside $from"
+    )
+
+    require(
+      stat(from, followLinks = true).isDir,
+      s"Asset source location is must be a directory and isn't: $from"
+    )
+
+    // Ensure destination directories are in place
+    makeDir.all(to)
+
+    IndigoAssets
+      .filesToCopy(indigoAssets, assetsDirectory)
+      .foreach { path =>
+        copyOne(path)
+      }
+  }
+
+  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
+  def copyScript(
+      scriptPathBase: Path,
+      destScriptsFolder: Path,
+      fileName: String
+  ): Unit = {
+    val scriptFile = scriptPathBase / fileName
+
+    if (os.exists(scriptFile))
+      os.copy(
+        scriptFile,
+        destScriptsFolder / fileName,
+        true,
+        false,
+        false,
+        false,
+        false
+      )
+    else
+      throw new Exception(
+        "Script file does not exist, have you compiled the JS file? Tried: " + scriptFile
+          .toString()
+      )
+  }
+
+  def writeHtml(directoryStructure: DirectoryStructure, html: String): Path = {
+
+    val outFile = directoryStructure.base / "index.html"
+
+    os.write(outFile, html)
+
+    outFile
+  }
+
+}

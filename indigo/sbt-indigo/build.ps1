@@ -1,0 +1,1 @@
+sbt clean scalafmtCheckAll sbtIndigo/publishLocal
