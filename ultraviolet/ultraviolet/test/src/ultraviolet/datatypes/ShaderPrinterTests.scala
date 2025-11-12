@@ -1,0 +1,215 @@
+package ultraviolet.datatypes
+
+import ultraviolet.syntax.*
+
+import scala.annotation.nowarn
+
+@nowarn("msg=unused")
+class ShaderPrinterTests extends munit.FunSuite {
+
+  test("The default printer can print an AST") {
+
+    val ast =
+      ShaderAST.Block(
+        List(
+          ShaderAST.Val("x", ShaderAST.DataTypes.float(1.0), ShaderAST.DataTypes.ident("float")),
+          ShaderAST.Block(
+            List(
+              ShaderAST.Annotated(
+                ShaderAST.DataTypes.ident("const"),
+                ShaderAST.Empty(),
+                ShaderAST.Val("y", ShaderAST.DataTypes.float(2.0), ShaderAST.DataTypes.ident("float"))
+              ),
+              ShaderAST.Val("z", ShaderAST.DataTypes.float(3.0), ShaderAST.DataTypes.ident("float"))
+            )
+          )
+        )
+      )
+
+    val actual =
+      ShaderPrinter.print[ShaderPrinter.WebGL2](ast)
+
+    val expected =
+      List(
+        "float x=1.0;",
+        "const float y=2.0;",
+        "float z=3.0;"
+      )
+
+    assertEquals(actual, expected)
+
+  }
+
+  test("A custom printer can partially match to modify the output of the print") {
+
+    given ShaderPrinter[Any] = new ShaderPrinter[Any] {
+
+      def isValid(
+          inType: Option[String],
+          outType: Option[String],
+          functions: List[ShaderAST],
+          body: ShaderAST
+      ): ShaderValid = ShaderValid.Valid
+
+      def transformer: PartialFunction[ShaderAST, ShaderAST] = {
+        case ShaderAST.Val("x", ShaderAST.DataTypes.float(1.0), ShaderAST.DataTypes.ident("float")) =>
+          ShaderAST.Val("xx", ShaderAST.DataTypes.float(100.0), ShaderAST.DataTypes.ident("float"))
+      }
+
+      def printer: PartialFunction[ShaderAST, List[String]] = {
+        case ShaderAST.Val("y", ShaderAST.DataTypes.float(2.0), ShaderAST.DataTypes.ident("float")) =>
+          List("float foo")
+      }
+    }
+
+    val ast =
+      ShaderAST.Block(
+        List(
+          ShaderAST.Val("x", ShaderAST.DataTypes.float(1.0), ShaderAST.DataTypes.ident("float")),
+          ShaderAST.Block(
+            List(
+              ShaderAST.Annotated(
+                ShaderAST.DataTypes.ident("const"),
+                ShaderAST.Empty(),
+                ShaderAST.Val("y", ShaderAST.DataTypes.float(2.0), ShaderAST.DataTypes.ident("float"))
+              ),
+              ShaderAST.Val("z", ShaderAST.DataTypes.float(3.0), ShaderAST.DataTypes.ident("float"))
+            )
+          )
+        )
+      )
+
+    val actual =
+      ShaderPrinter.print(ast)
+
+    val expected =
+      List(
+        "float xx=100.0;",
+        "const float foo;",
+        "float z=3.0;"
+      )
+
+    assertEquals(actual, expected)
+
+  }
+
+  test("Can output WebGL 1.0 and 2.0") {
+
+    @SuppressWarnings(Array("scalafix:DisableSyntax.var"))
+    case class Env(var COLOR: vec4)
+
+    @SuppressWarnings(Array("scalafix:DisableSyntax.null"))
+    inline def fragment =
+      Shader[Env, Unit] { env =>
+        @in val v_texcoord: vec2   = null
+        @in val v_normal: vec3     = null
+        @out val v_color: vec4     = null
+        @uniform val u_texture2d   = sampler2D
+        @uniform val u_textureCube = samplerCube
+
+        def main: Unit =
+          val c: vec4 = texture2D(u_texture2d, v_texcoord);
+          env.COLOR = textureCube(u_textureCube, normalize(v_normal)) * c
+      }
+
+    // DebugAST.toAST(fragment)
+
+    val webgl1 =
+      fragment.toGLSL[ShaderPrinter.WebGL1].toOutput.code
+
+    // println(webgl1)
+
+    assertEquals(
+      webgl1,
+      s"""
+      |varying vec2 v_texcoord;
+      |varying vec3 v_normal;
+      |varying vec4 v_color;
+      |uniform sampler2D u_texture2d;
+      |uniform samplerCube u_textureCube;
+      |void main(){
+      |  vec4 c=texture2D(u_texture2d,v_texcoord);
+      |  COLOR=textureCube(u_textureCube,normalize(v_normal))*c;
+      |}
+      |""".stripMargin.trim
+    )
+
+    val webgl2 =
+      fragment.toGLSL[ShaderPrinter.WebGL2].toOutput.code
+
+    // println(webgl2)
+
+    assertEquals(
+      webgl2,
+      s"""
+      |in vec2 v_texcoord;
+      |in vec3 v_normal;
+      |out vec4 v_color;
+      |uniform sampler2D u_texture2d;
+      |uniform samplerCube u_textureCube;
+      |void main(){
+      |  vec4 c=texture(u_texture2d,v_texcoord);
+      |  COLOR=texture(u_textureCube,normalize(v_normal))*c;
+      |}
+      |""".stripMargin.trim
+    )
+
+  }
+
+  test("Print negative symbols") {
+
+    import ShaderAST.*
+    import ShaderAST.DataTypes.*
+
+    val ast =
+      Neg(Infix("/", ident("x"), ident("y"), ident("x")))
+
+    val actual =
+      ShaderPrinter.print[WebGL2](ast)
+
+    // println(actual)
+
+    assertEquals(
+      actual.mkString("\n"),
+      s"""
+      |-(x/y)
+      |""".stripMargin.trim
+    )
+
+  }
+
+  test("Can print if statements at the end of functions") {
+
+    val ast =
+      ShaderAST.Block(
+        List(
+          ShaderAST.Function(
+            "move",
+            Nil,
+            ShaderAST.If(
+              ShaderAST.DataTypes.bool(true),
+              ShaderAST.Assign(ShaderAST.DataTypes.ident("pos"), ShaderAST.DataTypes.float(10.0f)),
+              None
+            ),
+            ShaderAST.unknownType
+          )
+        )
+      )
+
+    val actual =
+      ShaderPrinter.print[ShaderPrinter.WebGL2](ast)
+
+    val expected =
+      List(
+        "void move(){",
+        "  if(true){",
+        "    pos=10.0;",
+        "  }",
+        "}"
+      )
+
+    assertEquals(actual, expected)
+
+  }
+
+}
