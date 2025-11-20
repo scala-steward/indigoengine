@@ -11,20 +11,10 @@ set -e
 ./mill __.test
 ./mill __.publishLocal
 
-# # Indigo Plugin + Mill Plugin
-# echo ">>> Indigo Plugin + Mill Plugin"
-# cd indigo-plugin
-# bash build.sh
-# cd ..
+# Will return when sbt 2.0 supports Scala.js
 
 # SBT Indigo
 # echo ">>> SBT-Indigo"
 # cd sbt-indigo
-# bash build.sh
-# cd ..
-
-# # Indigo
-# echo ">>> Indigo"
-# cd indigo
 # bash build.sh
 # cd ..

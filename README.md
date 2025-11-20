@@ -46,4 +46,10 @@ If you'd like to help advance our work, we are ever grateful for all forms of co
 
 This is a predominately [Mill](https://mill-build.org/) based monorepo.
 
-There is a Nix-flake..
+Aside from your usual Scala set up, the tools you may need are JS tools: Node.js, Yarn, and potentially Electron. There is a Nix flake provided, if you like that sort of thing.
+
+You are highly encouraged to look at the very simple `build.sh` script, which you can run with `bash build.sh`.
+
+***The important thing to note*** is that running Scala.js linking on all of the modules at once is a _very_ heavy operation that may grind your build to a halt.
+
+So instead of doing `./mill __.fastLinkJS`, you should do something like `./mill -j2 __.fastLinkJS` to limit the concurrency. Other operations like compiling can by run at full parallelism, i.e. `./mill __.compile`.
