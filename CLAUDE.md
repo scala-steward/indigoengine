@@ -16,6 +16,31 @@ This is a **Mill** build. The `./mill` script in the root is the Mill launcher (
 
 **Windows:** Use `.\mill.bat` instead of `./mill` for all commands.
 
+### ⚠️ Target Specific Modules - Avoid Wasting Time
+
+**IMPORTANT:** This is a large monorepo with many modules. **Always target compilation and builds to the specific modules you're working on** rather than using general commands like `__.compile`.
+
+```bash
+# ✅ GOOD - Target specific modules
+./mill indigo-core.js.compile
+./mill ultraviolet.jvm.compile
+./mill tyrian.js.compile
+
+# ❌ AVOID - Compiles ALL modules (slow and wasteful)
+./mill __.compile
+
+# ✅ GOOD - Test specific modules
+./mill indigo-core.js.test
+./mill ultraviolet.jvm.test
+
+# ❌ AVOID - Tests ALL modules
+./mill __.test
+```
+
+**When to use general builds:**
+- Only use `__.compile`, `__.test`, `__.reformat`, etc. when you need to validate the entire repository (e.g., before committing, for CI, or when uncertain about impact)
+- For day-to-day development, always target specific modules
+
 ### Essential Commands
 
 ```bash

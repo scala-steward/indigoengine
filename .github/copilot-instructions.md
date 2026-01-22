@@ -16,6 +16,33 @@ This is a **Mill-based monorepo** containing Scala libraries and frameworks by P
 
 ## Critical Build Information
 
+### ⚠️ Target Specific Modules - Avoid Wasting Time
+
+**CRITICAL:** This is a large monorepo with many modules. **Always compile/build only the specific modules you're working on** rather than using general commands like `__.compile`, `__.test`, etc.
+
+```bash
+# ✅ CORRECT - Target specific modules
+./mill indigo-core.js.compile
+./mill ultraviolet.jvm.compile
+./mill tyrian.js.compile
+./mill indigo-core.js.test
+
+# ❌ AVOID - Compiles/tests ALL modules (extremely slow and wasteful)
+./mill __.compile
+./mill __.test
+```
+
+**Module targeting examples:**
+- Working on Ultraviolet? Use `./mill ultraviolet.js.compile` and `./mill ultraviolet.jvm.compile`
+- Working on Indigo core? Use `./mill indigo-core.js.compile`
+- Working on Tyrian? Use `./mill tyrian.js.compile`
+- Need to check dependencies? Target the specific module plus its dependencies (e.g., `./mill indigo.js.compile` for Indigo and its deps)
+
+**When to use general builds:**
+- **Only** for pre-commit validation or when impact is uncertain across the entire codebase
+- The `build.sh` and `ci.sh` scripts are intentionally comprehensive for full validation
+- For iterative development, **always target specific modules**
+
 ### Resource-Intensive Operations
 
 **⚠️ ALWAYS limit concurrency for Scala.js linking operations** - full parallelism exhausts system resources:
