@@ -4,24 +4,19 @@ import com.example.sandbox.SandboxAssets
 import com.example.sandbox.SandboxGame
 import com.example.sandbox.SandboxGameModel
 import com.example.sandbox.SandboxStartupData
-import com.example.sandbox.SandboxViewModel
 import indigo.*
 import indigo.scenes.*
 import indigo.syntax.*
 
-object MutantsScene extends Scene[SandboxStartupData, SandboxGameModel, SandboxViewModel]:
+object MutantsScene extends Scene[SandboxStartupData, SandboxGameModel]:
 
-  type SceneModel     = SandboxGameModel
-  type SceneViewModel = SandboxViewModel
+  type SceneModel = SandboxGameModel
 
   def eventFilters: EventFilters =
     EventFilters.Permissive
 
   def modelLens: Lens[SandboxGameModel, SandboxGameModel] =
     Lens.keepOriginal
-
-  def viewModelLens: Lens[SandboxViewModel, SandboxViewModel] =
-    Lens.keepLatest
 
   def name: SceneName =
     SceneName("mutants")
@@ -35,27 +30,21 @@ object MutantsScene extends Scene[SandboxStartupData, SandboxGameModel, SandboxV
   ): GlobalEvent => Outcome[SandboxGameModel] =
     _ => Outcome(model)
 
-  def updateViewModel(
-      context: SceneContext[SandboxStartupData],
-      model: SandboxGameModel,
-      viewModel: SandboxViewModel
-  ): GlobalEvent => Outcome[SandboxViewModel] =
-    case _ =>
-      Outcome(viewModel)
-
   val cloneId    = CloneId("mutant")
   val cloneBlank = CloneBlank(cloneId, Archetype())
 
   // A pretty mutant data set
-  val data: Array[Batch[MutantData]] =
-    0.until(100).toArray.map { i =>
-      val d  = Dice.fromSeed(i)
-      val pt = Point(d.rollFromZero(SandboxGame.gameWidth), d.rollFromZero(SandboxGame.gameHeight))
-      val sc = Vector2(0.3d + (d.rollDouble * 3.0d))
-      val a  = 0.1d + (0.8d * d.rollDouble)
+  val data: Batch[Batch[MutantData]] =
+    Batch.fromIndexedSeq(
+      0.until(100).map { i =>
+        val d  = Dice.fromSeed(i)
+        val pt = Point(d.rollFromZero(SandboxGame.gameWidth), d.rollFromZero(SandboxGame.gameHeight))
+        val sc = Vector2(0.3d + (d.rollDouble * 3.0d))
+        val a  = 0.1d + (0.8d * d.rollDouble)
 
-      Batch(MutantData(pt, sc, a))
-    }
+        Batch(MutantData(pt, sc, a))
+      }
+    )
 
   // A large mutant data set (60 fps on my machine)
   val dataMax: Array[Batch[MutantData]] =
@@ -84,8 +73,7 @@ object MutantsScene extends Scene[SandboxStartupData, SandboxGameModel, SandboxV
 
   def present(
       context: SceneContext[SandboxStartupData],
-      model: SandboxGameModel,
-      viewModel: SandboxViewModel
+      model: SandboxGameModel
   ): Outcome[SceneUpdateFragment] =
     Outcome(
       SceneUpdateFragment(

@@ -8,14 +8,11 @@ import indigo.core.geometry.LineSegment
 import indigoengine.shared.collections.Batch
 import indigoextras.utils.Bresenham
 
-import scalajs.js
-import js.JSConverters.*
-
 /** SparseGrid is a collection for managing grid of values where grid squares may or may not actually contain a value.
   */
 final class SparseGrid[A](
     val size: Size,
-    values: Batch[js.UndefOr[A]]
+    values: Batch[Option[A]]
 ):
   /** Returns the length of the grid, i.e. width * height */
   lazy val length: Int = size.width * size.height
@@ -27,20 +24,31 @@ final class SparseGrid[A](
   ): SparseGrid[A] =
     new SparseGrid(
       size,
+      values(SparseGrid.pointToIndex(coords, size.width)) = Some(value)
+    )
+
+  /** Put a value into the grid */
+  def put(
+      coords: Point,
+      value: Option[A]
+  ): SparseGrid[A] =
+    new SparseGrid(
+      size,
       values(SparseGrid.pointToIndex(coords, size.width)) = value
     )
 
   /** Put a batch of values into the grid */
   def put(newValues: Batch[(Point, A)]): SparseGrid[A] =
-    val arr = values.toJSArray
-    newValues.foreach { t =>
-      val idx = SparseGrid.pointToIndex(t._1, size.width)
-      val tt  = t._2
+    val updated =
+      newValues.foldLeft(values) { (acc, toInsert) =>
+        val idx = SparseGrid.pointToIndex(toInsert._1, size.width)
+        val tt  = toInsert._2
 
-      if idx < length then arr(idx) = tt
-    }
+        if idx < length then acc.replace(idx, Some(tt))
+        else acc
+      }
 
-    new SparseGrid(size, Batch(arr))
+    new SparseGrid(size, updated)
 
   /** Put a batch of values into the grid, at an offset position */
   def put(values: Batch[(Point, A)], offset: Point): SparseGrid[A] =
@@ -52,18 +60,18 @@ final class SparseGrid[A](
 
   /** Fill the grid with the given value */
   def fill(value: A): SparseGrid[A] =
-    new SparseGrid[A](size, Batch.fill(size.width * size.height)(value))
+    new SparseGrid[A](size, Batch.fill(size.width * size.height)(Some(value)))
 
   /** Get the value at the given coordinates */
   def get(coords: Point): Option[A] =
     val idx = SparseGrid.pointToIndex(coords, size.width)
-    values(idx).toOption
+    values(idx)
 
   /** Remove the value at the given coordinates */
   def remove(coords: Point): SparseGrid[A] =
     new SparseGrid(
       size,
-      values(SparseGrid.pointToIndex(coords, size.width)) = js.undefined
+      values(SparseGrid.pointToIndex(coords, size.width)) = None
     )
 
   /** Empty the grid */
@@ -72,79 +80,64 @@ final class SparseGrid[A](
 
   /** Returns all set values, guarantees order. */
   def toBatch: Batch[Option[A]] =
-    values.map(_.toOption)
+    values
 
   /** Returns all set values and a default for any value that is not present, guarantees order. */
   def toBatch(default: A): Batch[A] =
     values.map(v => v.getOrElse(default))
 
   /** Returns all values in a given region. */
-  @SuppressWarnings(Array("scalafix:DisableSyntax.while", "scalafix:DisableSyntax.var"))
   def toBatch(region: Rectangle): Batch[A] =
     val count = length
-    var i     = 0
-    var j     = 0
-    val acc   = new js.Array[js.UndefOr[A]](length)
 
-    while i < count do
-      if region.contains(SparseGrid.indexToPoint(i, size.width)) then acc(j) = values(i)
-      j += 1
-      i += 1
-
-    Batch(acc.collect { case p if p.isDefined => p.get })
+    Batch
+      .fromIndexedSeq(
+        (0 until count).map: i =>
+          val pt = SparseGrid.indexToPoint(i, size.width)
+          if region.contains(pt) then values(i).fold(Batch.empty[A])(v => Batch(v))
+          else Batch.empty[A]
+      )
+      .flatten
 
   /** Returns all values in a given region, or the provided default for any missing values. */
-  @SuppressWarnings(Array("scalafix:DisableSyntax.while", "scalafix:DisableSyntax.var"))
   def toBatch(region: Rectangle, default: A): Batch[A] =
     val count = length
-    var i     = 0
-    var j     = 0
-    val acc   = new js.Array[js.UndefOr[A]](length)
 
-    while i < count do
-      if region.contains(SparseGrid.indexToPoint(i, size.width)) then
-        val v = values(i)
-        acc(j) = v.getOrElse(default)
-      j += 1
-      i += 1
-
-    Batch(acc.collect { case p if p.isDefined => p.get })
+    Batch
+      .fromIndexedSeq(
+        (0 until count).map: i =>
+          val pt = SparseGrid.indexToPoint(i, size.width)
+          if region.contains(pt) then values(i).fold(Batch(default))(v => Batch(v))
+          else Batch.empty[A]
+      )
+      .flatten
 
   /** Returns all set values with their grid positions.
     */
-  @SuppressWarnings(Array("scalafix:DisableSyntax.while", "scalafix:DisableSyntax.var"))
   def toPositionedBatch: Batch[(Point, A)] =
     val count = length
-    var i     = 0
-    var j     = 0
-    val acc   = new js.Array[js.UndefOr[(Point, A)]](length)
 
-    while i < count do
-      val v  = values(i)
-      val pt = SparseGrid.indexToPoint(i, size.width)
-      if !js.isUndefined(v) then acc(j) = pt -> v.get
-      j += 1
-      i += 1
-
-    Batch(acc.collect { case p if p.isDefined => p.get })
+    Batch
+      .fromIndexedSeq(
+        (0 until count).map: i =>
+          val pt = SparseGrid.indexToPoint(i, size.width)
+          values(i).fold(Batch.empty[(Point, A)])(v => Batch(pt -> v))
+      )
+      .flatten
 
   /** Returns all values with their grid positions in a given region.
     */
-  @SuppressWarnings(Array("scalafix:DisableSyntax.while", "scalafix:DisableSyntax.var"))
   def toPositionedBatch(region: Rectangle): Batch[(Point, A)] =
     val count = length
-    var i     = 0
-    var j     = 0
-    val acc   = new js.Array[js.UndefOr[(Point, A)]](length)
 
-    while i < count do
-      val v  = values(i)
-      val pt = SparseGrid.indexToPoint(i, size.width)
-      if !js.isUndefined(v) && region.contains(pt) then acc(j) = pt -> v.get
-      j += 1
-      i += 1
-
-    Batch(acc.collect { case p if p.isDefined => p.get })
+    Batch
+      .fromIndexedSeq(
+        (0 until count).map: i =>
+          val pt = SparseGrid.indexToPoint(i, size.width)
+          if region.contains(pt) then values(i).fold(Batch.empty[(Point, A)])(v => Batch(pt -> v))
+          else Batch.empty[(Point, A)]
+      )
+      .flatten
 
   /** Alias for `combine`. Takes all of the 'set' entries of 'other' and puts them into this grid.
     */
@@ -164,9 +157,7 @@ final class SparseGrid[A](
     val idx = SparseGrid.pointToIndex(coords, size.width)
     val t   = values(idx)
 
-    modifier(t.toOption) match
-      case None        => remove(coords)
-      case Some(value) => put(coords, value)
+    put(coords, modifier(t))
 
   /** Map over and modify all the points on the grid */
   def map(modifier: (Point, Option[A]) => Option[A]): SparseGrid[A] =
@@ -174,7 +165,7 @@ final class SparseGrid[A](
       size,
       values.zipWithIndex.map { case (v, i) =>
         val pt = SparseGrid.indexToPoint(i, size.width)
-        modifier(pt, v.toOption).orUndefined
+        modifier(pt, v)
       }
     )
 
@@ -186,7 +177,7 @@ final class SparseGrid[A](
       size,
       values.zipWithIndex.map { case (v, i) =>
         val pt = SparseGrid.indexToPoint(i, size.width)
-        if region.contains(pt) then modifier(pt, v.toOption).orUndefined
+        if region.contains(pt) then modifier(pt, v)
         else v
       }
     )
@@ -201,7 +192,7 @@ final class SparseGrid[A](
       size,
       values.zipWithIndex.map { case (v, i) =>
         val pt = SparseGrid.indexToPoint(i, size.width)
-        if circle.contains(pt) then modifier(pt, v.toOption).orUndefined
+        if circle.contains(pt) then modifier(pt, v)
         else v
       }
     )
@@ -219,7 +210,7 @@ final class SparseGrid[A](
       size,
       values.zipWithIndex.map { case (v, i) =>
         val pt = SparseGrid.indexToPoint(i, size.width)
-        if pts.contains(pt) then modifier(pt, v.toOption).orUndefined
+        if pts.contains(pt) then modifier(pt, v)
         else v
       }
     )
@@ -250,5 +241,5 @@ object SparseGrid:
   def apply[A](size: Size): SparseGrid[A] =
     new SparseGrid[A](
       size,
-      Batch(new js.Array[A](size.width * size.height))
+      Batch.fill(size.width * size.height)(Option.empty[A])
     )

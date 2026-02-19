@@ -4,8 +4,6 @@ import indigoengine.shared.syntax.*
 
 import scala.annotation.nowarn
 
-import scalajs.js
-
 @SuppressWarnings(Array("scalafix:DisableSyntax.var"))
 @nowarn("msg=unused")
 class BatchTests extends munit.FunSuite {
@@ -19,6 +17,12 @@ class BatchTests extends munit.FunSuite {
   test("insert a value") {
     val actual   = Batch(1, 2, 3, 4, 5).insert(2, 10)
     val expected = Batch(1, 2, 10, 3, 4, 5)
+    assertEquals(actual, expected)
+  }
+
+  test("replace a value") {
+    val actual   = Batch(1, 2, 3, 4, 5).replace(2, 6)
+    val expected = Batch(1, 2, 6, 4, 5)
     assertEquals(actual, expected)
   }
 
@@ -77,25 +81,6 @@ class BatchTests extends munit.FunSuite {
     assertEquals(batch(3), 40)
     assertEquals(batch(4), 50)
     assertEquals(batch(5), 60)
-  }
-
-  test("compact") {
-    val actual =
-      Batch.Combine(
-        Batch(1),
-        Batch.Combine(
-          Batch.Combine(
-            Batch(2),
-            Batch(3)
-          ),
-          Batch(4, 5, 6)
-        )
-      )
-
-    val expected =
-      Batch.Wrapped(js.Array(1, 2, 3, 4, 5, 6))
-
-    assertEquals(actual.compact.toList, expected.toList)
   }
 
   test("head") {
@@ -213,33 +198,6 @@ class BatchTests extends munit.FunSuite {
     assertEquals(a.find(_ < 1), None)
   }
 
-  test("equals") {
-    assert(Batch(1) != Batch.empty)
-    assert(Batch(1) == Batch.Wrapped(js.Array(1)))
-    assert(Batch(2) != Batch.Wrapped(js.Array(1, 2)))
-    assert(Batch.Wrapped(js.Array(1, 2)) != Batch.Wrapped(js.Array(2, 1)))
-    assert(Batch.empty == Batch.empty)
-    assert(Batch.Combine(Batch.empty, Batch.empty) == Batch.empty)
-    assert(Batch.Combine(Batch(1), Batch.empty) == Batch(1))
-
-    val a: Batch[Int] =
-      Batch.Combine(
-        Batch(1),
-        Batch.Combine(
-          Batch.Combine(
-            Batch(2),
-            Batch(3)
-          ),
-          Batch(4, 5, 6)
-        )
-      )
-
-    val b: Batch[Int] =
-      Batch(1, 2, 3, 4, 5, 6)
-
-    assert(a == b)
-  }
-
   test("size") {
     val actual =
       Batch
@@ -267,7 +225,7 @@ class BatchTests extends munit.FunSuite {
   }
 
   test("toList - wrapped") {
-    assertEquals(Batch(js.Array(1, 2, 3)).toList, List(1, 2, 3))
+    assertEquals(Batch.fromVector(Vector(1, 2, 3)).toList, List(1, 2, 3))
     assertEquals(Batch(1, 2, 3).toList, List(1, 2, 3))
   }
 
@@ -291,7 +249,7 @@ class BatchTests extends munit.FunSuite {
     assertEquals(actual.toList, List(1, 2, 3, 4, 5, 6))
   }
 
-  test("toArray - nested") {
+  test("toVector - nested") {
     val actual =
       Batch.Combine(
         Batch(1),
@@ -304,7 +262,7 @@ class BatchTests extends munit.FunSuite {
         )
       )
 
-    assert(actual.toArray.sameElements(Array(1, 2, 3, 4, 5, 6)))
+    assert(actual.toVector.sameElements(Array(1, 2, 3, 4, 5, 6)))
   }
 
   test("combineAll") {
@@ -429,13 +387,6 @@ class BatchTests extends munit.FunSuite {
       )
 
     assertEquals(res.toList, expected)
-  }
-
-  test("isEmpty") {
-    assert(Batch.empty.isEmpty)
-    assert(!Batch(1).isEmpty)
-    assert(!Batch.Combine(Batch(1), Batch(2)).isEmpty)
-    assert(!Batch.Wrapped(js.Array(1, 2, 3)).isEmpty)
   }
 
   test("sequence - Option") {

@@ -437,9 +437,6 @@ object aliases:
   type GamepadButtons = indigo.core.input.GamepadButtons
   val GamepadButtons: indigo.core.input.GamepadButtons.type = indigo.core.input.GamepadButtons
 
-  type ImageType = shared.ImageType
-  val ImageType: shared.ImageType.type = shared.ImageType
-
   type BoundaryLocator = indigo.scenegraph.registers.BoundaryLocator
 
   type Context[StartUpData] = shared.Context[StartUpData]
@@ -675,6 +672,29 @@ object aliases:
 
   type QuadTreeValue[S, T] = indigo.core.trees.QuadTreeValue[S, T]
   val QuadTreeValue: indigo.core.trees.QuadTreeValue.type = indigo.core.trees.QuadTreeValue
+
+  // type BootResult[BootData, Model] = indigo.BootResult[BootData, Model]
+  // val BootResult: indigo.BootResult.type = indigo.BootResult
+
+  // Scenes
+
+  type Scene[StartUpData, GameModel] = indigo.scenes.Scene[StartUpData, GameModel]
+  val Scene: indigo.scenes.Scene.type = indigo.scenes.Scene
+
+  type SceneName = indigo.scenes.SceneName
+  val SceneName: indigo.scenes.SceneName.type = indigo.scenes.SceneName
+
+  type SceneContext[StartupData] = indigo.scenes.SceneContext[StartupData]
+  val SceneContext: indigo.scenes.SceneContext.type = indigo.scenes.SceneContext
+
+  type SceneEvent = indigo.scenes.SceneEvent
+  val SceneEvent: indigo.scenes.SceneEvent.type = indigo.scenes.SceneEvent
+
+  type SceneFinder = indigo.scenes.SceneFinder
+  val SceneFinder: indigo.scenes.SceneFinder.type = indigo.scenes.SceneFinder
+
+  type SceneManager[StartUpData, GameModel] = indigo.scenes.SceneManager[StartUpData, GameModel]
+  val SceneManager: indigo.scenes.SceneManager.type = indigo.scenes.SceneManager
 
 end aliases
 

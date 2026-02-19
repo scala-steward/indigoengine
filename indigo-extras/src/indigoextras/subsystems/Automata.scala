@@ -18,8 +18,6 @@ import indigoengine.shared.collections.NonEmptyBatch
 import indigoengine.shared.datatypes.Seconds
 import indigoextras.subsystems.AutomataEvent.*
 
-import scalajs.js
-
 final case class Automata[Model](
     poolKey: AutomataPoolKey,
     automaton: Automaton,
@@ -49,7 +47,7 @@ final case class Automata[Model](
     ()
 
   val initialModel: Outcome[AutomataState] =
-    Outcome(AutomataState(0, js.Array()))
+    Outcome(AutomataState(0, Batch.empty))
 
   def update(
       context: SubSystemContext[ReferenceData],
@@ -99,7 +97,7 @@ final case class Automata[Model](
       )
 
     case KillAll(key) if key == poolKey =>
-      Outcome(state.copy(pool = js.Array()))
+      Outcome(state.copy(pool = Batch.empty))
 
     case Update(key) if key == poolKey =>
       val cullEvents = state.pool
@@ -110,7 +108,7 @@ final case class Automata[Model](
         state.copy(
           pool = state.pool.filter(_.isAlive(context.frame.time.running))
         ),
-        Batch(cullEvents)
+        cullEvents
       )
 
     case _ =>
@@ -134,16 +132,14 @@ object Automata:
   def apply[Model](poolKey: AutomataPoolKey, automaton: Automaton, layerKey: LayerKey): Automata[Model] =
     Automata(poolKey, automaton, Some(layerKey), None)
 
-  def renderNoLayer(pool: js.Array[SpawnedAutomaton], gameTime: GameTime): AutomatonUpdate =
+  def renderNoLayer(pool: Batch[SpawnedAutomaton], gameTime: GameTime): AutomatonUpdate =
     AutomatonUpdate.sequence(
-      Batch(
-        pool.map { sa =>
-          sa.modifier.run((sa.seedValues, sa.sceneGraphNode)).at(gameTime.running - sa.seedValues.createdAt)
-        }
-      )
+      pool.map { sa =>
+        sa.modifier.run((sa.seedValues, sa.sceneGraphNode)).at(gameTime.running - sa.seedValues.createdAt)
+      }
     )
 
-final case class AutomataState(totalSpawned: Long, pool: js.Array[SpawnedAutomaton])
+final case class AutomataState(totalSpawned: Long, pool: Batch[SpawnedAutomaton])
 
 sealed trait AutomataEvent extends SubSystemEvent derives CanEqual
 object AutomataEvent {
@@ -171,13 +167,13 @@ final case class Automaton(
     node: AutomatonNode,
     lifespan: Seconds,
     modifier: SignalReader[(AutomatonSeedValues, SceneNode), AutomatonUpdate],
-    onCull: AutomatonSeedValues => List[GlobalEvent]
+    onCull: AutomatonSeedValues => Batch[GlobalEvent]
 ):
 
   def withModifier(newModifier: SignalReader[(AutomatonSeedValues, SceneNode), AutomatonUpdate]): Automaton =
     this.copy(modifier = newModifier)
 
-  def withOnCullEvent(onCullEvent: AutomatonSeedValues => List[GlobalEvent]): Automaton =
+  def withOnCullEvent(onCullEvent: AutomatonSeedValues => Batch[GlobalEvent]): Automaton =
     this.copy(onCull = onCullEvent)
 
 object Automaton:
@@ -194,8 +190,8 @@ object Automaton:
       Signal.fixed(AutomatonUpdate(transform(sa, n)))
     }
 
-  val NoCullEvent: AutomatonSeedValues => List[GlobalEvent] =
-    _ => Nil
+  val NoCullEvent: AutomatonSeedValues => Batch[GlobalEvent] =
+    _ => Batch.empty
 
   def apply(node: AutomatonNode, lifespan: Seconds): Automaton =
     Automaton(node, lifespan, NoOpModifier, NoCullEvent)
@@ -250,7 +246,7 @@ final case class AutomatonSeedValues(
 final case class SpawnedAutomaton(
     sceneGraphNode: SceneNode,
     modifier: SignalReader[(AutomatonSeedValues, SceneNode), AutomatonUpdate],
-    onCull: AutomatonSeedValues => List[GlobalEvent],
+    onCull: AutomatonSeedValues => Batch[GlobalEvent],
     seedValues: AutomatonSeedValues
 ) derives CanEqual:
   def isAlive(currentTime: Seconds): Boolean =

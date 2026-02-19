@@ -10,15 +10,21 @@ import indigo.shared.subsystems.SubSystemContext
 import indigo.shared.subsystems.SubSystemContext.*
 import indigo.shared.subsystems.SubSystemsRegister
 import indigoengine.shared.collections.Batch
+import indigoengine.shared.collections.KVP
 import indigoengine.shared.collections.NonEmptyBatch
 import indigoengine.shared.datatypes.Seconds
 
 import scala.annotation.nowarn
 
-class SceneManager[StartUpData, GameModel, ViewModel](
-    scenes: NonEmptyBatch[Scene[StartUpData, GameModel, ViewModel]],
+class SceneManager[StartUpData, GameModel](
+    scenes: NonEmptyBatch[Scene[StartUpData, GameModel]],
     scenesFinder: SceneFinder
 ):
+
+  // private given CanEqual[Option[Scene[StartUpData, GameModel]], Option[
+  //   Scene[StartUpData, GameModel]
+  // ]] =
+  //   CanEqual.derived
 
   // Scene management
   @SuppressWarnings(Array("scalafix:DisableSyntax.var"))
@@ -27,11 +33,11 @@ class SceneManager[StartUpData, GameModel, ViewModel](
   private var lastSceneChangeAt: Seconds = Seconds.zero
 
   @nowarn("msg=unused")
-  private val subSystemStates: scalajs.js.Dictionary[SubSystemsRegister[GameModel]] =
-    scalajs.js.Dictionary
+  private val subSystemStates: KVP[SubSystemsRegister[GameModel]] =
+    KVP
       .empty[SubSystemsRegister[GameModel]]
       .addAll(
-        scenes.toList.map { s =>
+        scenes.toBatch.map { s =>
           val r = new SubSystemsRegister[GameModel]()
           r.register(Batch.fromSet(s.subSystems))
           s.name.toString -> r
@@ -157,7 +163,7 @@ class SceneManager[StartUpData, GameModel, ViewModel](
         subSystemStates
           .get(scene.name.toString)
           .map {
-            _.update(ctx, model, globalEvents.toJSArray)
+            _.update(ctx, model, globalEvents)
           }
       }
       .getOrElse(
@@ -166,28 +172,9 @@ class SceneManager[StartUpData, GameModel, ViewModel](
         )
       )
 
-  def updateViewModel(
-      ctx: Context[StartUpData],
-      model: GameModel,
-      viewModel: ViewModel
-  ): GlobalEvent => Outcome[ViewModel] =
-    scenes.find(_.name == finderInstance.current.name) match
-      case None =>
-        IndigoLogger.errorOnce("Could not find scene called: " + finderInstance.current.name)
-        _ => Outcome(viewModel)
-
-      case Some(scene) =>
-        Scene.updateViewModel(
-          scene,
-          SceneContext(scene.name, lastSceneChangeAt, ctx),
-          model,
-          viewModel
-        )
-
   def updateView(
       ctx: Context[StartUpData],
-      model: GameModel,
-      viewModel: ViewModel
+      model: GameModel
   ): Outcome[SceneUpdateFragment] =
     scenes.find(_.name == finderInstance.current.name) match
       case None =>
@@ -206,8 +193,7 @@ class SceneManager[StartUpData, GameModel, ViewModel](
           Scene.updateView(
             scene,
             SceneContext(scene.name, lastSceneChangeAt, ctx),
-            model,
-            viewModel
+            model
           ),
           subsystemView
         )(_ |+| _)
@@ -216,18 +202,18 @@ class SceneManager[StartUpData, GameModel, ViewModel](
     scenes.find(_.name == finderInstance.current.name) match
       case None =>
         // This should never be the case, we should always find a scene.
-        EventFilters((_: GlobalEvent) => None, (_: GlobalEvent) => None)
+        EventFilters.BlockAll
 
       case Some(value) =>
         value.eventFilters
 
 object SceneManager:
 
-  def apply[StartUpData, GameModel, ViewModel](
-      scenes: NonEmptyBatch[Scene[StartUpData, GameModel, ViewModel]],
+  def apply[StartUpData, GameModel](
+      scenes: NonEmptyBatch[Scene[StartUpData, GameModel]],
       initialScene: SceneName
-  ): SceneManager[StartUpData, GameModel, ViewModel] =
-    new SceneManager[StartUpData, GameModel, ViewModel](
+  ): SceneManager[StartUpData, GameModel] =
+    new SceneManager[StartUpData, GameModel](
       scenes,
-      SceneFinder.fromScenes[StartUpData, GameModel, ViewModel](scenes).jumpToSceneByName(initialScene)
+      SceneFinder.fromScenes[StartUpData, GameModel](scenes).jumpToSceneByName(initialScene)
     )

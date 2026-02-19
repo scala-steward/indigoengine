@@ -3,8 +3,6 @@ package indigoextras.pathfinding
 import indigo.*
 import indigoextras.pathfinding.PathBuilder.Movements.*
 
-import scala.scalajs.js
-
 /** The structure allowing to customize the path finding and to build a path of type T
   *
   * @tparam T
@@ -171,7 +169,7 @@ object PathBuilder:
     *   a path finder builder
     */
   def fromWeighted2DGrid(
-      grid: js.Array[js.Array[Int]],
+      grid: Batch[Batch[Int]],
       width: Int,
       height: Int,
       allowedMovements: Batch[Point],
@@ -194,7 +192,7 @@ object PathBuilder:
       def heuristic(t1: Point, t2: Point): Int =
         (Math.abs(t1.x - t2.x) + Math.abs(t1.y - t2.y)) * maxHeuristicFactor
 
-  def fromWeighted2DGrid(grid: js.Array[js.Array[Int]], width: Int, height: Int): PathBuilder[Point] =
+  def fromWeighted2DGrid(grid: Batch[Batch[Int]], width: Int, height: Int): PathBuilder[Point] =
     fromWeighted2DGrid(grid, width, height, All, DefaultSideCost, DefaultDiagonalCost, DefaultMaxHeuristicFactor)
 
   /** Builds a path finder builder from a weighted 1D grid. Impassable points are represented by Int.MaxValue other

@@ -8,7 +8,7 @@ import indigo.scenegraph.materials.Material
 import indigo.shaders.EntityShader
 import indigo.shaders.ShaderData
 import indigo.shaders.ShaderId
-import indigo.shaders.ShaderPrimitive.rawJSArray
+import indigo.shaders.ShaderPrimitive.rawBatch
 import indigo.shaders.UltravioletShader
 import indigo.shaders.Uniform
 import indigo.shaders.UniformBlock
@@ -78,10 +78,10 @@ final case class LegacyEffects(
         case FillType.Tile         => 2.0
         case FillType.NineSlice(_) => 3.0
 
-    val nineSliceCenter: scalajs.js.Array[Float] =
+    val nineSliceCenter: Batch[Float] =
       fillType match
         case FillType.NineSlice(center) =>
-          scalajs.js.Array(
+          Batch(
             center.x.toFloat,
             center.y.toFloat,
             center.width.toFloat,
@@ -89,7 +89,7 @@ final case class LegacyEffects(
           )
 
         case _ =>
-          scalajs.js.Array(0.0f, 0.0f, 0.0f, 0.0f)
+          Batch(0.0f, 0.0f, 0.0f, 0.0f)
 
     ShaderData(
       LegacyEffects.entityShader.id,
@@ -98,15 +98,15 @@ final case class LegacyEffects(
           UniformBlockName("IndigoLegacyEffectsData"),
           Batch(
             // ALPHA_SATURATION_OVERLAYTYPE_FILLTYPE (vec4), TINT (vec4)
-            Uniform("LegacyEffects_DATA") -> rawJSArray(
-              scalajs.js.Array(
+            Uniform("LegacyEffects_DATA") -> rawBatch(
+              Batch(
                 alpha.toFloat,
                 saturation.toFloat,
                 overlayType,
                 imageFillType
               ) ++
                 nineSliceCenter ++
-                scalajs.js.Array(
+                Batch(
                   tint.r.toFloat,
                   tint.g.toFloat,
                   tint.b.toFloat,
@@ -116,8 +116,8 @@ final case class LegacyEffects(
           ) ++ overlay.toUniformData("LegacyEffects") ++
             // BORDER_COLOR (vec4), GLOW_COLOR (vec4), EFFECT_AMOUNTS (vec4)
             Batch(
-              Uniform("LegacyEffects_EFFECTS") -> rawJSArray(
-                scalajs.js.Array(
+              Uniform("LegacyEffects_EFFECTS") -> rawBatch(
+                Batch(
                   border.color.r.toFloat,
                   border.color.g.toFloat,
                   border.color.b.toFloat,

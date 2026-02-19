@@ -32,19 +32,11 @@ object UpdateList:
   def empty[A]: UpdateList[A] =
     apply(Nil)
 
-  @SuppressWarnings(Array("scalafix:DisableSyntax.var", "scalafix:DisableSyntax.while"))
   def updateList[A](l: List[A], f: A => A, pattern: UpdatePattern): (List[A], UpdatePattern) =
-    var i: Int                   = 0
-    val res: scalajs.js.Array[A] = new scalajs.js.Array[A]()
+    val res =
+      l.zipWithIndex.map((v, i) => pattern.update(v, f, v, i))
 
-    while (i < l.length) {
-      val v = l(i)
-      res.insert(i, pattern.update(v, f, v, i))
-
-      i = i + 1
-    }
-
-    (res.toList, pattern.step)
+    (res, pattern.step)
 
 sealed trait UpdatePattern:
   def update[A, B](value: A, f: A => B, default: B, position: Int): B

@@ -16,6 +16,8 @@ This is a **Mill** build. The `./mill` script in the root is the Mill launcher (
 
 **Windows:** Use `.\mill.bat` instead of `./mill` for all commands.
 
+**Windows (Claude Code):** Run Mill via PowerShell: `powershell.exe -Command "& { .\mill.bat <target> }"`
+
 ### ⚠️ Target Specific Modules - Avoid Wasting Time
 
 **IMPORTANT:** This is a large monorepo with many modules. **Always target compilation and builds to the specific modules you're working on** rather than using general commands like `__.compile`.
@@ -92,6 +94,22 @@ If tests fail with `NoClassDefFoundError` in Scala.js testing classes (e.g., `Se
 - **Scalafix** rules: DisableSyntax, OrganizeImports (config in `.scalafix.conf`)
 - Scalafix enforces: no vars, throws, nulls, returns, while loops, XML, default args
 
+Follow the existing coding style in terms of whitespace and layout.
+Prefer braceless Scala 3 in the small, but use braces for larger code blocks.
+Use vertical whitespace to keep line lengh down and to group logical code blocks.
+
+Generally do not add comments (groupings, separators, notes), except in the following circumstances:
+1. The code block being commented is particularly complicated, unintuitive, or subtle.
+2. The comments are Scaladocs on user facing APIs.
+
+## Testing Approach
+
+Follow **pragmatic TDD** when working on pure logic and data structures:
+- Write unit tests (not property-based tests) to confirm behaviour before or alongside implementation
+- Use MUnit `FunSuite` with direct `assertEquals`/`assert` assertions
+- Test files go alongside source in `test/src/`, `test/src-js/`, or `test/src-jvm/` mirroring the source package structure
+- Do not write integration tests with complicated set ups without discussion or unless specifically asked
+
 ## Architecture
 
 ### Module Dependency Graph
@@ -101,20 +119,33 @@ indigoengine-shared (base module)
     ↓
 indigo-core
     ↓
-ultraviolet (jvm & js) ─────────────────┐
-    ↓                                   │
-indigo-shaders                          │
-    ↓                                   │
-indigo-scenegraph                       │
-    ↓                                   │
-indigo-physics                          │
-    ↓                                   │
-indigo ←────────────────────────────────┘
+ultraviolet (jvm & js)
+    ↓
+indigo-shaders
+    ↓
+indigo-scenegraph
+    ↓
+├── indigo-physics
+│       ↓
+│   indigo-platform-api (platform abstraction)
+│       ↓
+│   indigo-js-platform (JS/browser implementation)
+│       ↓
+└──→ indigo ←───────────────────────────────────
     ↓
 indigo-extras
     ↓
 roguelike-starterkit
 ```
+
+### Platform Abstraction
+
+The engine uses a platform abstraction layer to separate platform-agnostic code from platform-specific implementations:
+
+- **indigo-platform-api**: Defines the `Platform` trait and related types (renderer API, display objects, asset mapping). This module is platform-agnostic.
+- **indigo-js-platform**: The JavaScript/browser implementation using Scala.js, WebGL, and DOM APIs. Implements `JsPlatform` which provides animation frames, storage, audio, networking, and WebGL rendering.
+
+This architecture enables future support for alternative platforms (native, server-side, etc.) by implementing the `Platform` trait for different runtimes.
 
 Tyrian has a separate dependency chain:
 ```

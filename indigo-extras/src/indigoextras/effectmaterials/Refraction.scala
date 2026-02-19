@@ -12,7 +12,7 @@ import indigo.shaders.EntityShader
 import indigo.shaders.ShaderData
 import indigo.shaders.ShaderId
 import indigo.shaders.ShaderPrimitive.float
-import indigo.shaders.ShaderPrimitive.rawJSArray
+import indigo.shaders.ShaderPrimitive.rawBatch
 import indigo.shaders.ShaderProgram
 import indigo.shaders.UltravioletShader
 import indigo.shaders.Uniform
@@ -86,10 +86,10 @@ final case class RefractionEntity(diffuse: AssetName, fillType: FillType) extend
         case FillType.Tile         => 2.0
         case FillType.NineSlice(_) => 3.0
 
-    val nineSliceCenter: scalajs.js.Array[Float] =
+    val nineSliceCenter: Batch[Float] =
       fillType match
         case FillType.NineSlice(center) =>
-          scalajs.js.Array(
+          Batch(
             center.x.toFloat,
             center.y.toFloat,
             center.width.toFloat,
@@ -97,14 +97,14 @@ final case class RefractionEntity(diffuse: AssetName, fillType: FillType) extend
           )
 
         case _ =>
-          scalajs.js.Array(0.0f, 0.0f, 0.0f, 0.0f)
+          Batch(0.0f, 0.0f, 0.0f, 0.0f)
 
     val uniformBlock: UniformBlock =
       UniformBlock(
         UniformBlockName("IndigoBitmapData"),
         Batch(
           Uniform("FILLTYPE")          -> float(imageFillType),
-          Uniform("NINE_SLICE_CENTER") -> rawJSArray(nineSliceCenter)
+          Uniform("NINE_SLICE_CENTER") -> rawBatch(nineSliceCenter)
         )
       )
 

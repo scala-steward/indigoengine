@@ -7,21 +7,17 @@ import indigoextras.pathfinding.*
 import indigoextras.pathfinding.PathBuilder.*
 import indigoextras.pathfinding.PathBuilder.Movements.*
 
-import scala.scalajs.js
-import scala.scalajs.js.JSConverters.*
-
 final case class PathFindingModel(
     // will represent a weighted grid
-    data: js.Array[Int] = js.Array()
+    data: Batch[Int]
 )
 
 object PathFindingModel:
-  val empty: PathFindingModel = PathFindingModel()
+  val empty: PathFindingModel = PathFindingModel(Batch.empty)
 
-object PathFindingScene extends Scene[SandboxStartupData, SandboxGameModel, SandboxViewModel]:
+object PathFindingScene extends Scene[SandboxStartupData, SandboxGameModel]:
 
-  type SceneModel     = PathFindingModel
-  type SceneViewModel = SandboxViewModel
+  type SceneModel = PathFindingModel
 
   val increase: Int        = 30
   val gridSize: Int        = 10
@@ -32,9 +28,6 @@ object PathFindingScene extends Scene[SandboxStartupData, SandboxGameModel, Sand
 
   def modelLens: Lens[SandboxGameModel, SceneModel] =
     Lens(_.pathfinding, (m, pm) => m.copy(pathfinding = pm))
-
-  def viewModelLens: Lens[SandboxViewModel, SandboxViewModel] =
-    Lens.keepOriginal
 
   def name: SceneName =
     SceneName("pathfinding")
@@ -50,28 +43,20 @@ object PathFindingScene extends Scene[SandboxStartupData, SandboxGameModel, Sand
     case FrameTick =>
       if (model.data.isEmpty)
         Outcome(
-          PathFindingModel(data = List.fill(gridSize * gridSize)(0).toJSArray) // initialise the grid with 0s
+          PathFindingModel(data = Batch.fill(gridSize * gridSize)(0)) // initialise the grid with 0s
         )
       else
         // increase randomly the value at a random point
         val n = context.frame.dice.roll(model.data.length) - 1
         val v = (model.data(n) + context.frame.dice.roll(increase)) % 256
-        model.data.update(n, v)
-        Outcome(model)
+
+        Outcome(model.copy(data = model.data.update(n, v)))
 
     case _ => Outcome(model)
 
-  def updateViewModel(
-      context: SceneContext[SandboxStartupData],
-      model: SceneModel,
-      viewModel: SandboxViewModel
-  ): GlobalEvent => Outcome[SandboxViewModel] =
-    _ => Outcome(viewModel)
-
   def present(
       context: SceneContext[SandboxStartupData],
-      model: SceneModel,
-      viewModel: SandboxViewModel
+      model: SceneModel
   ): Outcome[SceneUpdateFragment] =
 
     // in practice we should not have to compute the path every frame
@@ -79,7 +64,7 @@ object PathFindingScene extends Scene[SandboxStartupData, SandboxGameModel, Sand
     val end   = Point(gridSize - 1, gridSize - 1) // bottom right
     val pathBuilder =
       PathBuilder.fromWeightedGrid(
-        grid = Batch(model.data),
+        grid = model.data,
         width = gridSize,
         height = gridSize,
         allowedMovements = All,
