@@ -96,7 +96,7 @@ If tests fail with `NoClassDefFoundError` in Scala.js testing classes (e.g., `Se
 
 Follow the existing coding style in terms of whitespace and layout.
 Prefer braceless Scala 3 in the small, but use braces for larger code blocks.
-Use vertical whitespace to keep line lengh down and to group logical code blocks.
+Use vertical whitespace to keep line length down and to group logical code blocks.
 
 Generally do not add comments (groupings, separators, notes), except in the following circumstances:
 1. The code block being commented is particularly complicated, unintuitive, or subtle.
@@ -115,48 +115,34 @@ Follow **pragmatic TDD** when working on pure logic and data structures:
 ### Module Dependency Graph
 
 ```
-indigoengine-shared (base module)
-    ↓
-indigo-core
-    ↓
-ultraviolet (jvm & js)
-    ↓
-indigo-shaders
-    ↓
-indigo-scenegraph
-    ↓
-├── indigo-physics
-│       ↓
-│   indigo-platform-api (platform abstraction)
-│       ↓
-│   indigo-js-platform (JS/browser implementation)
-│       ↓
-└──→ indigo ←───────────────────────────────────
-    ↓
-indigo-extras
-    ↓
-roguelike-starterkit
+                    indigoengine-shared
+                         ↓    ↓
+ultraviolet (jvm & js)  indigo-core  tyrian-tags
+        ↓                    ↓            ↓
+        └────── indigo-shaders       tyrian.js
+                      ↓                  │
+              indigo-scenegraph          │
+                 ↓          ↓            │
+         indigo-physics  indigo-platform │
+                 ↓          ↓            │
+                 └───── indigo ←─────────┘
+                            ↓
+                      indigo-extras
+                            ↓
+                    roguelike-starterkit
 ```
 
 ### Platform Abstraction
 
 The engine uses a platform abstraction layer to separate platform-agnostic code from platform-specific implementations:
 
-- **indigo-platform-api**: Defines the `Platform` trait and related types (renderer API, display objects, asset mapping). This module is platform-agnostic.
-- **indigo-js-platform**: The JavaScript/browser implementation using Scala.js, WebGL, and DOM APIs. Implements `JsPlatform` which provides animation frames, storage, audio, networking, and WebGL rendering.
+- **indigo-platform**: Defines the `Platform` trait and related types (renderer API, display objects, asset mapping), and provides the JavaScript/browser implementation using Scala.js, WebGL, and DOM APIs.
 
 This architecture enables future support for alternative platforms (native, server-side, etc.) by implementing the `Platform` trait for different runtimes.
 
-Tyrian has a separate dependency chain:
-```
-indigoengine-shared
-    ↓
-tyrian-tags
-    ↓
-tyrian (js only)
-    ↓
-tyrian-io, tyrian-zio, tyrian-htmx
-```
+Tyrian's downstream modules branch off from `tyrian.js` and `tyrian-tags`:
+- `tyrian.js` → `tyrian-io`, `tyrian-zio`
+- `tyrian-tags` → `tyrian-htmx`
 
 ### Key Patterns
 
