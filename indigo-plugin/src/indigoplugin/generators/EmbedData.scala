@@ -148,7 +148,7 @@ final case class DataFrame(data: Array[Array[DataType]], columnCount: Int) {
     data.head.map(_.toStringData)
 
   def rows: Array[Array[DataType]] =
-    data.tail
+    data.drop(1)
 
   def alignColumnTypes: DataFrame = {
     val columns =

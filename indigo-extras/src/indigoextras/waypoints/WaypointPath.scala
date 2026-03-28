@@ -36,9 +36,9 @@ final case class WaypointPath(waypoints: Batch[Vertex], config: WaypointPathConf
   private val zippedWaypoints =
     if config.looping then
       calculatedWaypoints.zip(
-        calculatedWaypoints.tail :+ calculatedWaypoints.head
+        calculatedWaypoints.drop(1) :+ calculatedWaypoints.head
       )
-    else calculatedWaypoints.dropRight(1).zip(calculatedWaypoints.tail)
+    else calculatedWaypoints.dropRight(1).zip(calculatedWaypoints.drop(1))
 
   private val waypointDistances = zippedWaypoints
     .map: (p1, p2) =>
@@ -85,7 +85,7 @@ final case class WaypointPath(waypoints: Batch[Vertex], config: WaypointPathConf
       val position  = v2
       val direction = (v2 - v1).angle
       WaypointPathPosition(position, direction)
-    else findPathPosition(distances.tail, coveredDistance, acc + distance)
+    else findPathPosition(distances.drop(1), coveredDistance, acc + distance)
 
   private def lerpDouble(start: Double, end: Double, at: Double): Double =
     start + ((end - start) * at)
@@ -115,13 +115,13 @@ final case class WaypointPath(waypoints: Batch[Vertex], config: WaypointPathConf
               acc :+ newNextWaypoint
             case None =>
               Batch(nextWaypoint)
-          waypointsWithRadiusAux(remainingWaypoints.tail, nextAcc)
+          waypointsWithRadiusAux(remainingWaypoints.drop(1), nextAcc)
         case None =>
           acc
 
     val resolvedWaypoints = waypointsWithRadiusAux(loopedWaypoints, Batch.empty)
 
-    if loop then Batch(resolvedWaypoints.last) ++ resolvedWaypoints.tail.dropRight(1)
+    if loop then Batch(resolvedWaypoints.last) ++ resolvedWaypoints.drop(1).dropRight(1)
     else resolvedWaypoints
 
 object WaypointPath:
