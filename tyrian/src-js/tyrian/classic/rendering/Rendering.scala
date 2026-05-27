@@ -135,16 +135,16 @@ object Rendering:
 
         h(name, data, childrenElem)
 
-      case c: CustomHtml[Msg] =>
+      case c: CustomHtml[Msg] @unchecked =>
         toVNode(c.toHtml, onMsg, router)
 
   private def elemToVNodes[Msg](elem: Elem[Msg], onMsg: Msg => Unit, router: Location => Option[Msg]): List[VNode] =
     elem match
-      case _: Empty.type      => Nil
-      case t: Text            => List(VNode.text(t.value))
-      case subHtml: Html[Msg] => List(toVNode(subHtml, onMsg, router))
-      case c: CustomElem[Msg] => c.toElems.flatMap(cc => elemToVNodes(cc, onMsg, router))
-      case HtmlEntity(value)  => List(VNode.text(value))
+      case _: Empty.type                 => Nil
+      case t: Text                       => List(VNode.text(t.value))
+      case subHtml: Html[Msg] @unchecked => List(toVNode(subHtml, onMsg, router))
+      case c: CustomElem[Msg] @unchecked => c.toElems.flatMap(cc => elemToVNodes(cc, onMsg, router))
+      case HtmlEntity(value)             => List(VNode.text(value))
 
   private lazy val patch: Patch =
     snabbdom.init(

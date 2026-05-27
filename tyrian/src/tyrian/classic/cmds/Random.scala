@@ -11,7 +11,7 @@ object Random:
 
   /** Random `Int` */
   def int[F[_]: Sync]: Cmd[F, RandomValue.NextInt] =
-    RandomValue.NextInt(r.nextInt).toCmd
+    RandomValue.NextInt(r.nextInt()).toCmd
 
   /** Random `Int` within an upper limit */
   def int[F[_]: Sync](upperLimit: Int): Cmd[F, RandomValue.NextInt] =
@@ -19,7 +19,7 @@ object Random:
 
   /** Random `Long` */
   def long[F[_]: Sync]: Cmd[F, RandomValue.NextLong] =
-    RandomValue.NextLong(r.nextLong).toCmd
+    RandomValue.NextLong(r.nextLong()).toCmd
 
   /** Random `Long` within an upper limit */
   def long[F[_]: Sync](upperLimit: Long): Cmd[F, RandomValue.NextLong] =
@@ -27,11 +27,11 @@ object Random:
 
   /** Random `Float` */
   def float[F[_]: Sync]: Cmd[F, RandomValue.NextFloat] =
-    RandomValue.NextFloat(r.nextFloat).toCmd
+    RandomValue.NextFloat(r.nextFloat()).toCmd
 
   /** Random `Double` */
   def double[F[_]: Sync]: Cmd[F, RandomValue.NextDouble] =
-    RandomValue.NextDouble(r.nextDouble).toCmd
+    RandomValue.NextDouble(r.nextDouble()).toCmd
 
   /** Random series of alphanumeric characters */
   def alphaNumeric[F[_]: Sync](length: Int): Cmd[F, RandomValue.NextAlphaNumeric] =
@@ -49,7 +49,7 @@ object Random:
 
     /** Random `Int` */
     def int[F[_]: Sync]: Cmd[F, RandomValue.NextInt] =
-      RandomValue.NextInt(r.nextInt).toCmd
+      RandomValue.NextInt(r.nextInt()).toCmd
 
     /** Random `Int` within an upper limit */
     def int[F[_]: Sync](upperLimit: Int): Cmd[F, RandomValue.NextInt] =
@@ -57,7 +57,7 @@ object Random:
 
     /** Random `Long` */
     def long[F[_]: Sync]: Cmd[F, RandomValue.NextLong] =
-      RandomValue.NextLong(r.nextLong).toCmd
+      RandomValue.NextLong(r.nextLong()).toCmd
 
     /** Random `Long` within an upper limit */
     def long[F[_]: Sync](upperLimit: Long): Cmd[F, RandomValue.NextLong] =
@@ -65,11 +65,11 @@ object Random:
 
     /** Random `Float` */
     def float[F[_]: Sync]: Cmd[F, RandomValue.NextFloat] =
-      RandomValue.NextFloat(r.nextFloat).toCmd
+      RandomValue.NextFloat(r.nextFloat()).toCmd
 
     /** Random `Double` */
     def double[F[_]: Sync]: Cmd[F, RandomValue.NextDouble] =
-      RandomValue.NextDouble(r.nextDouble).toCmd
+      RandomValue.NextDouble(r.nextDouble()).toCmd
 
     /** Random series of alphanumeric characters */
     def alphaNumeric[F[_]: Sync](length: Int): Cmd[F, RandomValue.NextAlphaNumeric] =

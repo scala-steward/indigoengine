@@ -92,7 +92,7 @@ object HtmlRoot:
             case Some(toAppend) =>
               (m.children ++ toAppend).flatMap(rec(_))
 
-        case t: Tag[GlobalMsg] =>
+        case t: Tag[GlobalMsg] @unchecked =>
           // This is unfortunate. Tyrian classic works on List, where Tyrian uses Batch.
           // HtmlRoot is really for use with UIElements but supports the classic tags as
           // a bit of a second class citizen.
@@ -104,13 +104,13 @@ object HtmlRoot:
         case t: Text =>
           Batch(t)
 
-        case c: CustomElem[GlobalMsg] =>
+        case c: CustomElem[GlobalMsg] @unchecked =>
           Batch(c)
 
-        case r: RawTag[GlobalMsg] =>
+        case r: RawTag[GlobalMsg] @unchecked =>
           Batch(r)
 
-        case c: CustomHtml[GlobalMsg] =>
+        case c: CustomHtml[GlobalMsg] @unchecked =>
           Batch(c)
 
         case e: HtmlEntity =>
