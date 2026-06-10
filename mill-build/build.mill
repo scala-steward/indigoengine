@@ -24,7 +24,7 @@ object `package` extends MillBuildRootModule:
     super.sources() ++ indigoPluginSources() ++ millPluginSources()
   }
 
-  val circeVersion: String         = "0.14.14"
+  val circeVersion: String         = "0.14.15"
   val osLibVersion: String         = "0.11.8"
   val scalacOptionsVersion: String = "0.1.8"
   val scalafixMillVersion: String  = "0.6.0"
